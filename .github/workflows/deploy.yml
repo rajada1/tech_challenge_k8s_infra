@@ -3,11 +3,11 @@ name: Deploy EKS Infrastructure
 on:
   push:
     branches:
-      - main
+      - master
       - homolog
   pull_request:
     branches:
-      - main
+      - master
 
 env:
   AWS_REGION: us-east-1
