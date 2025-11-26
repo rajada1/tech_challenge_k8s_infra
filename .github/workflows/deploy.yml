@@ -57,11 +57,11 @@ jobs:
         run: exit 1
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: terraform apply -auto-approve -input=false tfplan
 
       - name: Get EKS Outputs
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         id: outputs
         run: |
           echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
@@ -69,7 +69,7 @@ jobs:
           echo "region=$(terraform output -raw region)" >> $GITHUB_OUTPUT
 
       - name: Store EKS Config in SSM
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: |
           aws ssm put-parameter \
             --name "/oficina/eks/cluster_name" \
@@ -90,14 +90,14 @@ jobs:
             --overwrite
 
       - name: Configure kubectl
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: |
           aws eks update-kubeconfig \
             --region ${{ steps.outputs.outputs.region }} \
             --name ${{ steps.outputs.outputs.cluster_name }}
 
       - name: Verify EKS Cluster
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: |
           kubectl get nodes
           kubectl cluster-info
