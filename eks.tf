@@ -1,7 +1,8 @@
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 19.0"
-
+  create_kms_key            = false
+  cluster_encryption_config = {}
   cluster_name    = var.cluster_name
   cluster_version = "1.29"
 
