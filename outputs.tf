@@ -27,8 +27,3 @@ output "private_subnets" {
   description = "List of private subnet IDs"
   value       = join(",", module.vpc.private_subnets)
 }
-
-output "cluster_security_group_id" {
-  description = "Security group ids attached to the cluster control plane"
-  value       = module.eks.cluster_security_group_id
-}
