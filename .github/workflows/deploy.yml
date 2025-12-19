@@ -1,7 +1,6 @@
 name: Deploy EKS Infrastructure
 
 on:
-on:
   push:
     branches:
       - homolog
