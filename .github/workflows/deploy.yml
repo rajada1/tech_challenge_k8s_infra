@@ -1,6 +1,10 @@
 name: Deploy EKS Infrastructure
 
 on:
+on:
+  push:
+    branches:
+      - homolog
   workflow_dispatch:
     inputs:
       environment:
@@ -73,7 +77,7 @@ jobs:
 
       - name: Store EKS Config in SSM
         run: |
-          ENVIRONMENT=${{ github.event.inputs.environment }}
+          ENVIRONMENT=${{ github.event.inputs.environment || 'homolog' }}
           aws ssm put-parameter \
             --name "/oficina/$ENVIRONMENT/eks/cluster_name" \
             --value "${{ steps.outputs.outputs.cluster_name }}" \
