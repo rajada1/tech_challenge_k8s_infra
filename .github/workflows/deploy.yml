@@ -1,13 +1,15 @@
 name: Deploy EKS Infrastructure
 
 on:
-  push:
-    branches:
-      - master
-      - homolog
-  pull_request:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'homolog'
+        type: choice
+        options:
+          - homolog
 
 env:
   AWS_REGION: us-east-1
@@ -57,74 +59,64 @@ jobs:
         run: exit 1
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false tfplan
 
       - name: Get EKS Outputs
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         id: outputs
         run: |
           echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
           echo "cluster_endpoint=$(terraform output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
           echo "region=$(terraform output -raw region)" >> $GITHUB_OUTPUT
+          echo "vpc_id=$(terraform output -raw vpc_id)" >> $GITHUB_OUTPUT
+          echo "private_subnets=$(terraform output -raw private_subnets)" >> $GITHUB_OUTPUT
+          echo "cluster_security_group_id=$(terraform output -raw cluster_security_group_id)" >> $GITHUB_OUTPUT
 
       - name: Store EKS Config in SSM
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: |
+          ENVIRONMENT=${{ github.event.inputs.environment }}
           aws ssm put-parameter \
-            --name "/oficina/eks/cluster_name" \
+            --name "/oficina/$ENVIRONMENT/eks/cluster_name" \
             --value "${{ steps.outputs.outputs.cluster_name }}" \
             --type "String" \
             --overwrite
           
           aws ssm put-parameter \
-            --name "/oficina/eks/cluster_endpoint" \
+            --name "/oficina/$ENVIRONMENT/eks/cluster_endpoint" \
             --value "${{ steps.outputs.outputs.cluster_endpoint }}" \
             --type "String" \
             --overwrite
           
           aws ssm put-parameter \
-            --name "/oficina/eks/region" \
+            --name "/oficina/$ENVIRONMENT/eks/region" \
             --value "${{ steps.outputs.outputs.region }}" \
+            --type "String" \
+            --overwrite
+            
+          aws ssm put-parameter \
+            --name "/oficina/$ENVIRONMENT/vpc/id" \
+            --value "${{ steps.outputs.outputs.vpc_id }}" \
+            --type "String" \
+            --overwrite
+            
+          aws ssm put-parameter \
+            --name "/oficina/$ENVIRONMENT/vpc/private_subnets" \
+            --value "${{ steps.outputs.outputs.private_subnets }}" \
+            --type "String" \
+            --overwrite
+            
+          aws ssm put-parameter \
+            --name "/oficina/$ENVIRONMENT/eks/security_group_id" \
+            --value "${{ steps.outputs.outputs.cluster_security_group_id }}" \
             --type "String" \
             --overwrite
 
       - name: Configure kubectl
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: |
           aws eks update-kubeconfig \
             --region ${{ steps.outputs.outputs.region }} \
             --name ${{ steps.outputs.outputs.cluster_name }}
 
       - name: Verify EKS Cluster
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: |
           kubectl get nodes
           kubectl cluster-info
-
-      - name: Comment PR with Plan
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-            
-            <details><summary>Show Plan</summary>
-            
-            \`\`\`terraform
-            ${{ steps.plan.outputs.stdout }}
-            \`\`\`
-            
-            </details>
-            
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
