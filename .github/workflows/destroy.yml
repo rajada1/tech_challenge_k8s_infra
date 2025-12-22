@@ -39,5 +39,94 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Delete SSM Parameters
+        run: |
+          echo "Deleting SSM Parameters..."
+          ENVIRONMENT=${{ github.event.inputs.environment || 'homolog' }}
+          
+          # Delete all EKS and VPC related parameters
+          aws ssm delete-parameter --name "/oficina/$ENVIRONMENT/eks/cluster_name" --region ${{ env.AWS_REGION }} || echo "Parameter /oficina/$ENVIRONMENT/eks/cluster_name not found"
+          aws ssm delete-parameter --name "/oficina/$ENVIRONMENT/eks/cluster_endpoint" --region ${{ env.AWS_REGION }} || echo "Parameter /oficina/$ENVIRONMENT/eks/cluster_endpoint not found"
+          aws ssm delete-parameter --name "/oficina/$ENVIRONMENT/eks/region" --region ${{ env.AWS_REGION }} || echo "Parameter /oficina/$ENVIRONMENT/eks/region not found"
+          aws ssm delete-parameter --name "/oficina/$ENVIRONMENT/vpc/id" --region ${{ env.AWS_REGION }} || echo "Parameter /oficina/$ENVIRONMENT/vpc/id not found"
+          aws ssm delete-parameter --name "/oficina/$ENVIRONMENT/vpc/private_subnets" --region ${{ env.AWS_REGION }} || echo "Parameter /oficina/$ENVIRONMENT/vpc/private_subnets not found"
+          aws ssm delete-parameter --name "/oficina/$ENVIRONMENT/eks/security_group_id" --region ${{ env.AWS_REGION }} || echo "Parameter /oficina/$ENVIRONMENT/eks/security_group_id not found"
+          
+          echo "✅ SSM Parameters cleanup completed"
+
+      - name: Clean up Orphaned Load Balancers
+        run: |
+          echo "Checking for orphaned Load Balancers..."
+          
+          # List Load Balancers that might be associated with the cluster
+          LBS=$(aws elbv2 describe-load-balancers \
+            --query "LoadBalancers[?contains(LoadBalancerName, 'oficina') || contains(LoadBalancerName, 'tech-challenge')].LoadBalancerArn" \
+            --output text \
+            --region ${{ env.AWS_REGION }}) || true
+          
+          if [ ! -z "$LBS" ]; then
+            echo "⚠️  Found Load Balancers that may need cleanup:"
+            for lb in $LBS; do
+              LB_NAME=$(aws elbv2 describe-load-balancers --load-balancer-arns $lb --query "LoadBalancers[0].LoadBalancerName" --output text --region ${{ env.AWS_REGION }})
+              echo "  - $LB_NAME ($lb)"
+              
+              # Delete Load Balancer
+              echo "Deleting Load Balancer: $LB_NAME"
+              aws elbv2 delete-load-balancer --load-balancer-arn $lb --region ${{ env.AWS_REGION }} || echo "Failed to delete $LB_NAME"
+            done
+            
+            echo "Waiting 60 seconds for Load Balancers to be deleted..."
+            sleep 60
+          else
+            echo "✅ No orphaned Load Balancers found"
+          fi
+
+      - name: Clean up Orphaned Security Groups
+        run: |
+          echo "Checking for orphaned Security Groups..."
+          
+          # List security groups created by EKS LoadBalancers (usually start with k8s-*)
+          SGS=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=k8s-*" \
+            --query "SecurityGroups[].GroupId" \
+            --output text \
+            --region ${{ env.AWS_REGION }}) || true
+          
+          if [ ! -z "$SGS" ]; then
+            echo "⚠️  Found orphaned Security Groups:"
+            for sg in $SGS; do
+              SG_NAME=$(aws ec2 describe-security-groups --group-ids $sg --query "SecurityGroups[0].GroupName" --output text --region ${{ env.AWS_REGION }})
+              echo "  - $SG_NAME ($sg)"
+              
+              # Try to delete (may fail if still in use)
+              echo "Attempting to delete Security Group: $SG_NAME"
+              aws ec2 delete-security-group --group-id $sg --region ${{ env.AWS_REGION }} || echo "Could not delete $SG_NAME (may still be in use)"
+            done
+          else
+            echo "✅ No orphaned Security Groups found"
+          fi
+
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
+      
+      - name: Verify CloudWatch Logs Cleanup
+        run: |
+          echo "Checking for orphaned CloudWatch Log Groups..."
+          
+          LOG_GROUPS=$(aws logs describe-log-groups \
+            --log-group-name-prefix "/aws/eks/" \
+            --query "logGroups[].logGroupName" \
+            --output text \
+            --region ${{ env.AWS_REGION }}) || true
+          
+          if [ ! -z "$LOG_GROUPS" ]; then
+            echo "⚠️  Found orphaned CloudWatch Log Groups:"
+            for log_group in $LOG_GROUPS; do
+              echo "  - $log_group"
+              aws logs delete-log-group --log-group-name $log_group --region ${{ env.AWS_REGION }} || echo "Failed to delete $log_group"
+            done
+          else
+            echo "✅ No orphaned CloudWatch Log Groups found"
+          fi
+          
+          echo "✅ Complete EKS infrastructure cleanup finished"
