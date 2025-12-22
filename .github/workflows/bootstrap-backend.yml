@@ -77,19 +77,6 @@ jobs:
           
           echo "✅ Criptografia habilitada"
 
-      - name: Block Public Access
-        if: github.event.inputs.action == 'create'
-        run: |
-          aws s3api put-public-access-block \
-            --bucket ${{ env.BUCKET_NAME }} \
-            --public-access-block-configuration \
-              BlockPublicAcls=true,\
-              IgnorePublicAcls=true,\
-              BlockPublicPolicy=true,\
-              RestrictPublicBuckets=true
-          
-          echo "✅ Acesso público bloqueado"
-
       - name: Add Tags
         if: github.event.inputs.action == 'create'
         run: |
