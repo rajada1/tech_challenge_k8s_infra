@@ -1,12 +1,12 @@
 module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 19.0"
+  source                    = "terraform-aws-modules/eks/aws"
+  version                   = "~> 19.0"
   create_kms_key            = false
   cluster_encryption_config = {}
-  cluster_name    = var.cluster_name
-  cluster_version = "1.29"
+  cluster_name              = var.cluster_name
+  cluster_version           = "1.29"
 
-  cluster_endpoint_public_access  = true
+  cluster_endpoint_public_access = true
 
   vpc_id                   = module.vpc.vpc_id
   subnet_ids               = module.vpc.private_subnets
@@ -28,7 +28,12 @@ module "eks" {
   }
 
   tags = {
-    Environment = "dev"
+    Name        = var.cluster_name
+    Environment = var.environment
     Terraform   = "true"
+    ManagedBy   = "Terraform"
+    Project     = "tech-challenge"
+    Component   = "kubernetes"
+    Team        = "grupo99"
   }
 }

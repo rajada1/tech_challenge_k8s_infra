@@ -1,0 +1,196 @@
+# ==============================================================================
+# TECH CHALLENGE EKS INFRA - TERRAFORM CONFIGURATION EXAMPLE
+# ==============================================================================
+# Copy this file to terraform.tfvars and fill in your actual values
+# Never commit terraform.tfvars with sensitive data to version control
+# ==============================================================================
+
+# ==============================================================================
+# AWS CONFIGURATION
+# ==============================================================================
+
+aws_region = "us-east-1"
+
+# ==============================================================================
+# EKS CLUSTER CONFIGURATION
+# ==============================================================================
+
+cluster_name       = "tech-challenge-cluster"
+node_instance_type = "t3.small"
+desired_capacity   = 2
+
+# ==============================================================================
+# ENVIRONMENT
+# ==============================================================================
+
+environment = "dev"  # Options: dev, staging, prod
+
+# ==============================================================================
+# NEW RELIC CONFIGURATION
+# ==============================================================================
+
+# Enable/Disable New Relic Monitoring
+enable_newrelic_monitoring = true
+
+# New Relic Account Credentials
+# Get these from: https://one.newrelic.com/admin-portal/api-keys/home
+newrelic_account_id  = "YOUR_NEWRELIC_ACCOUNT_ID"     # Example: "1234567"
+newrelic_api_key     = "YOUR_NEWRELIC_USER_API_KEY"   # Example: "NRAK-XXXXXXXXXXXXXXXXXXXXX"
+newrelic_license_key = "YOUR_NEWRELIC_LICENSE_KEY"    # Example: "euXXXXNRAL" (for agent installation)
+newrelic_region      = "US"                            # Options: US or EU
+
+# ==============================================================================
+# LOGGING CONFIGURATION
+# ==============================================================================
+
+# Enable New Relic logging integration
+enable_logging = true
+
+# ==============================================================================
+# ALERT THRESHOLDS
+# ==============================================================================
+
+# Node CPU utilization threshold (percentage)
+# Alert when node CPU usage exceeds this value
+alert_node_cpu_threshold = 80
+
+# Node memory utilization threshold (percentage)
+# Alert when node memory usage exceeds this value
+alert_node_memory_threshold = 80
+
+# Pod CPU utilization threshold (percentage)
+# Alert when pod CPU usage exceeds this value
+alert_pod_cpu_threshold = 90
+
+# Pod memory utilization threshold (percentage)
+# Alert when pod memory usage exceeds this value
+alert_pod_memory_threshold = 90
+
+# Email address for alert notifications
+# Leave empty to disable email alerts
+alert_email = "your-team-email@example.com"
+
+# ==============================================================================
+# QUICK START GUIDE
+# ==============================================================================
+# 
+# 1. Copy this file:
+#    cp terraform.tfvars.example terraform.tfvars
+#
+# 2. Get New Relic credentials:
+#    - Login to New Relic: https://one.newrelic.com
+#    - Go to: Administration > API Keys
+#    - Copy your Account ID
+#    - Create or copy a User API Key (starts with NRAK-)
+#    - Get License Key from: Administration > API Keys > Ingest Keys
+#
+# 3. Fill in your values in terraform.tfvars
+#
+# 4. Initialize Terraform:
+#    terraform init
+#
+# 5. Plan deployment:
+#    terraform plan
+#
+# 6. Apply configuration:
+#    terraform apply
+#
+# 7. Configure kubectl:
+#    aws eks update-kubeconfig --name tech-challenge-cluster --region us-east-1
+#
+# 8. Verify New Relic pods:
+#    kubectl get pods -n newrelic
+#
+# 9. Verify in New Relic:
+#    - Check Dashboard: Infrastructure > Kubernetes
+#    - Check Alerts: Alerts & AI > Alert Policies
+#    - Check Metrics: Infrastructure > Kubernetes
+#
+# ==============================================================================
+# ENVIRONMENT-SPECIFIC RECOMMENDATIONS
+# ==============================================================================
+#
+# DEVELOPMENT:
+# - enable_newrelic_monitoring = true
+# - enable_logging = true
+# - node_instance_type = "t3.small"
+# - desired_capacity = 2
+# - alert_node_cpu_threshold = 90
+#
+# STAGING:
+# - enable_newrelic_monitoring = true
+# - enable_logging = true
+# - node_instance_type = "t3.medium"
+# - desired_capacity = 3
+# - alert_node_cpu_threshold = 85
+#
+# PRODUCTION:
+# - enable_newrelic_monitoring = true
+# - enable_logging = true
+# - node_instance_type = "t3.large" or higher
+# - desired_capacity = 3-5
+# - alert_node_cpu_threshold = 80
+# - Enable cluster autoscaler
+# - Configure HPA for applications
+# - Use spot instances for cost optimization
+#
+# ==============================================================================
+# SECURITY BEST PRACTICES
+# ==============================================================================
+#
+# ✓ Never commit terraform.tfvars to version control
+# ✓ Add terraform.tfvars to .gitignore
+# ✓ Use AWS Secrets Manager for credentials in production
+# ✓ Rotate API keys regularly
+# ✓ Use environment-specific workspaces
+# ✓ Enable pod security policies
+# ✓ Use network policies for pod-to-pod communication
+# ✓ Enable CloudTrail for audit logging
+# ✓ Use IAM roles for service accounts (IRSA)
+# ✓ Scan container images for vulnerabilities
+#
+# ==============================================================================
+# COST OPTIMIZATION
+# ==============================================================================
+#
+# Estimated monthly costs (us-east-1):
+#
+# EKS Control Plane:             ~$72/month
+# EC2 nodes (2x t3.small):       ~$30/month
+# EBS volumes:                   ~$10/month
+# NAT Gateway:                   ~$32/month
+# Data transfer:                 ~$5/month
+# New Relic (Free tier):         $0/month (100GB ingestion)
+#
+# Total estimated:               ~$150-180/month
+#
+# Cost-saving tips:
+# - Use Spot Instances for non-critical workloads (save 70-90%)
+# - Single NAT gateway for dev (already configured)
+# - Enable cluster autoscaler to scale down during idle
+# - Use Fargate for specific workloads
+# - Monitor New Relic data ingestion to stay in free tier
+# - Right-size node instance types based on actual usage
+# - Use Reserved Instances for production (save 30-60%)
+#
+# ==============================================================================
+# NEW RELIC CREDENTIALS
+# ==============================================================================
+#
+# You need TWO types of keys from New Relic:
+#
+# 1. User API Key (for Terraform provider):
+#    - Used by: Terraform New Relic provider
+#    - Format: NRAK-XXXXXXXXXXXXXXXXXXXXX
+#    - Location: Administration > API Keys > User keys
+#    - Scope: Full access to account
+#
+# 2. License Key (for agents):
+#    - Used by: New Relic agents running in Kubernetes
+#    - Format: euXXXXNRAL or XXXX-NRAL
+#    - Location: Administration > API Keys > Ingest - License
+#    - Scope: Data ingestion only
+#
+# Both are required for full functionality!
+#
+# ==============================================================================
