@@ -23,6 +23,11 @@ jobs:
   terraform:
     name: Terraform Deploy
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_newrelic_account_id: ${{ secrets.NEW_RELIC_ACCOUNT_ID }}
+      TF_VAR_newrelic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
+      TF_VAR_newrelic_license_key: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+      TF_VAR_environment: ${{ github.event.inputs.environment || 'homolog' }}
     
     steps:
       - name: Checkout code
@@ -74,13 +79,7 @@ jobs:
         run: exit 1
 
       - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve -input=false \
-            -var="environment=${{ github.event.inputs.environment || 'homolog' }}" \
-            -var="newrelic_license_key=${{ secrets.NEW_RELIC_LICENSE_KEY }}" \
-            -var="newrelic_api_key=${{ secrets.NEW_RELIC_API_KEY }}" \
-            -var="newrelic_account_id=${{ secrets.NEW_RELIC_ACCOUNT_ID }}" \
-            tfplan
+        run: terraform apply -auto-approve -input=false tfplan
 
       - name: Get EKS Outputs
         id: outputs
