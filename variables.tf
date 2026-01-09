@@ -21,3 +21,27 @@ variable "desired_capacity" {
   type        = number
   default     = 2
 }
+
+variable "newrelic_license_key" {
+  description = "New Relic License Key (Ingest)"
+  type        = string
+  sensitive   = true
+}
+
+variable "newrelic_api_key" {
+  description = "New Relic User API Key (for Terraform Provider)"
+  type        = string
+  sensitive   = true
+}
+
+variable "newrelic_account_id" {
+  description = "New Relic Account ID"
+  type        = string
+}
+
+variable "environment" {
+  description = "Deployment Environment (e.g., homolog, prod)"
+  type        = string
+  default     = "homolog"
+}
+
