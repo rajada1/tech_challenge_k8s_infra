@@ -22,6 +22,7 @@ resource "kubernetes_config_map" "oficina_config" {
     MANAGEMENT_HEALTH_READINESSSTATE_ENABLED  = "true"
 
     # New Relic Configuration
+    NEW_RELIC_APP_NAME                    = "Oficina Service - ${var.environment}"
     NEW_RELIC_ENVIRONMENT                 = var.environment
     NEW_RELIC_DISTRIBUTED_TRACING_ENABLED = "true"
     NEW_RELIC_LOG_LEVEL                   = "info"
