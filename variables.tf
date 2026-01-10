@@ -36,7 +36,8 @@ variable "newrelic_api_key" {
 
 variable "newrelic_account_id" {
   description = "New Relic Account ID"
-  type        = string
+  type        = number
+  default     = 0
 }
 
 variable "environment" {
