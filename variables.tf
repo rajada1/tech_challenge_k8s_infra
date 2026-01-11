@@ -26,12 +26,22 @@ variable "newrelic_license_key" {
   description = "New Relic License Key (Ingest)"
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(var.newrelic_license_key) > 0
+    error_message = "The New Relic License Key must not be empty. Please set the NEW_RELIC_LICENSE_KEY secret in GitHub."
+  }
 }
 
 variable "newrelic_api_key" {
   description = "New Relic User API Key (for Terraform Provider)"
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(var.newrelic_api_key) > 0
+    error_message = "The New Relic User API Key must not be empty. Please set the NEW_RELIC_API_KEY secret in GitHub."
+  }
 }
 
 variable "newrelic_account_id" {
