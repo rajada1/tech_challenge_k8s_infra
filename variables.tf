@@ -36,8 +36,13 @@ variable "newrelic_api_key" {
 
 variable "newrelic_account_id" {
   description = "New Relic Account ID"
-  type        = number
-  default     = 0
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = length(var.newrelic_account_id) > 0
+    error_message = "The New Relic Account ID must not be empty. Please set the NEW_RELIC_ACCOUNT_ID secret in GitHub."
+  }
 }
 
 variable "environment" {
