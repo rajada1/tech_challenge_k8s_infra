@@ -2,7 +2,9 @@ name: Deploy EKS Infrastructure
 # go
 
 on:
-
+  push:
+    branches:
+      - master
   workflow_dispatch:
     inputs:
       environment:
