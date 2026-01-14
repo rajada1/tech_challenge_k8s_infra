@@ -21,3 +21,43 @@ variable "desired_capacity" {
   type        = number
   default     = 2
 }
+
+variable "newrelic_license_key" {
+  description = "New Relic License Key (Ingest)"
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.newrelic_license_key) > 0
+    error_message = "The New Relic License Key must not be empty. Please set the NEW_RELIC_LICENSE_KEY secret in GitHub."
+  }
+}
+
+variable "newrelic_api_key" {
+  description = "New Relic User API Key (for Terraform Provider)"
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.newrelic_api_key) > 0
+    error_message = "The New Relic User API Key must not be empty. Please set the NEW_RELIC_API_KEY secret in GitHub."
+  }
+}
+
+variable "newrelic_account_id" {
+  description = "New Relic Account ID"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = length(var.newrelic_account_id) > 0
+    error_message = "The New Relic Account ID must not be empty. Please set the NEW_RELIC_ACCOUNT_ID secret in GitHub."
+  }
+}
+
+variable "environment" {
+  description = "Deployment Environment (e.g., homolog, prod)"
+  type        = string
+  default     = "homolog"
+}
+
