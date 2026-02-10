@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-service-config
+  namespace: catalog-service
+  labels:
+    app: catalog-service
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  AWS_REGION: "us-east-1"
+  LOG_LEVEL: "INFO"
+  DB_PORT: "5432"
+  DB_NAME: "catalogservice"
+  DB_HOST: "${DB_HOST}"  # Injected from Terraform output
+  NEW_RELIC_APP_NAME: "catalog-service"
+  NEW_RELIC_ENABLED: "true"  SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+  SQS_CATALOG_EVENTS_QUEUE: "catalog-events.fifo"
+  SQS_CONSUMER_WAIT_TIME_SECONDS: "20"
+  SQS_MAX_NUMBER_OF_MESSAGES: "10"

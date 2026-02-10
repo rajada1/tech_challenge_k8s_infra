@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customer-service-config
+  namespace: customer-service
+  labels:
+    app: customer-service
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  AWS_REGION: "us-east-1"
+  LOG_LEVEL: "INFO"
+  DB_PORT: "5432"
+  DB_NAME: "customerservice"
+  DB_HOST: "${DB_HOST}"  # Injected from Terraform output
+  NEW_RELIC_APP_NAME: "customer-service"
+  NEW_RELIC_ENABLED: "true"  SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+  SQS_CUSTOMER_EVENTS_QUEUE: "customer-events.fifo"
+  SQS_CONSUMER_WAIT_TIME_SECONDS: "20"
+  SQS_MAX_NUMBER_OF_MESSAGES: "10"
