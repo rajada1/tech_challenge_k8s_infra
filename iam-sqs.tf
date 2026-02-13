@@ -19,13 +19,13 @@ resource "aws_iam_role" "eks_pod_role" {
       {
         Effect = "Allow"
         Principal = {
-          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")}"
+          Federated = module.eks.oidc_provider_arn
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:${each.key}:${each.key}-sa"
-            "${replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")}:aud" = "sts.amazonaws.com"
+            "${module.eks.oidc_provider}:sub" = "system:serviceaccount:${each.key}:${each.key}-sa"
+            "${module.eks.oidc_provider}:aud" = "sts.amazonaws.com"
           }
         }
       }
@@ -95,14 +95,6 @@ resource "aws_iam_role_policy" "eks_sqs_policy" {
       }
     ]
   })
-}
-
-# ==========================================
-# Data Sources
-# ==========================================
-
-data "aws_eks_cluster" "eks" {
-  name = var.cluster_name
 }
 
 # ==========================================
