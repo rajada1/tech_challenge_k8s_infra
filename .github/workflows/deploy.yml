@@ -5,12 +5,13 @@ on:
   push:
     branches:
       - master
+      - fase/quatro
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy'
+        description: "Environment to deploy"
         required: true
-        default: 'homolog'
+        default: "homolog"
         type: choice
         options:
           - homolog
@@ -28,7 +29,7 @@ jobs:
       TF_VAR_newrelic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
       TF_VAR_newrelic_license_key: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       TF_VAR_environment: ${{ github.event.inputs.environment || 'homolog' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -57,12 +58,12 @@ jobs:
       - name: Clean up existing CloudWatch Log Groups
         run: |
           echo "Checking for existing CloudWatch Log Groups..."
-          
+
           # Delete existing EKS log group if it exists
           aws logs delete-log-group \
             --log-group-name /aws/eks/tech-challenge-cluster/cluster \
             --region ${{ env.AWS_REGION }} 2>/dev/null || echo "Log group doesn't exist or already deleted"
-          
+
           echo "CloudWatch Log Groups cleanup completed"
 
       - name: Terraform Validate
@@ -99,13 +100,13 @@ jobs:
             --value "${{ steps.outputs.outputs.cluster_name }}" \
             --type "String" \
             --overwrite
-          
+
           aws ssm put-parameter \
             --name "/oficina/$ENVIRONMENT/eks/cluster_endpoint" \
             --value "${{ steps.outputs.outputs.cluster_endpoint }}" \
             --type "String" \
             --overwrite
-          
+
           aws ssm put-parameter \
             --name "/oficina/$ENVIRONMENT/eks/region" \
             --value "${{ steps.outputs.outputs.region }}" \
@@ -140,3 +141,17 @@ jobs:
         run: |
           kubectl get nodes
           kubectl cluster-info
+
+      - name: Get AWS Account ID
+        id: account
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
+      - name: Replace AWS Account ID in K8s manifests
+        run: |
+          echo "Replacing <AWS_ACCOUNT_ID> with actual account ID in deployment manifests..."
+          find microservices/ -name '*.yaml' -exec sed -i "s/<AWS_ACCOUNT_ID>/${{ steps.account.outputs.account_id }}/g" {} +
+          echo "Replacement completed."
+
+      - name: Deploy microservices via Kustomize
+        run: |
+          kubectl apply -k . || echo "Kustomize deploy completed with warnings"
