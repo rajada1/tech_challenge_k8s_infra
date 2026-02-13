@@ -75,6 +75,7 @@ resource "aws_sqs_queue" "dlq_fifo" {
   name                        = "${each.value.queue_name}-dlq.fifo"
   fifo_queue                  = true
   content_based_deduplication = local.queue_config.content_based_deduplication
+  deduplication_scope         = "messageGroup"
   visibility_timeout_seconds  = local.queue_config.visibility_timeout_seconds
   message_retention_seconds   = local.queue_config.message_retention_seconds
   fifo_throughput_limit       = local.queue_config.fifo_throughput_limit
@@ -98,6 +99,7 @@ resource "aws_sqs_queue" "service_events_fifo" {
   name                        = "${each.value.queue_name}.fifo"
   fifo_queue                  = true
   content_based_deduplication = local.queue_config.content_based_deduplication
+  deduplication_scope         = "messageGroup"
   visibility_timeout_seconds  = local.queue_config.visibility_timeout_seconds
   message_retention_seconds   = local.queue_config.message_retention_seconds
   fifo_throughput_limit       = local.queue_config.fifo_throughput_limit
