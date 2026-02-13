@@ -54,7 +54,7 @@ locals {
 
   queue_config = {
     visibility_timeout_seconds  = 60     # 60 seconds for processing
-    message_retention_period    = 345600 # 4 days in seconds
+    message_retention_seconds   = 345600 # 4 days in seconds
     content_based_deduplication = false  # Use messageDeduplicationId
     fifo_throughput_limit       = "perMessageGroupId"
     kms_master_key_id           = null # Use default AWS managed key
@@ -76,7 +76,7 @@ resource "aws_sqs_queue" "dlq_fifo" {
   fifo_queue                  = true
   content_based_deduplication = local.queue_config.content_based_deduplication
   visibility_timeout_seconds  = local.queue_config.visibility_timeout_seconds
-  message_retention_period    = local.queue_config.message_retention_period
+  message_retention_seconds   = local.queue_config.message_retention_seconds
   fifo_throughput_limit       = local.queue_config.fifo_throughput_limit
 
   tags = {
@@ -99,7 +99,7 @@ resource "aws_sqs_queue" "service_events_fifo" {
   fifo_queue                  = true
   content_based_deduplication = local.queue_config.content_based_deduplication
   visibility_timeout_seconds  = local.queue_config.visibility_timeout_seconds
-  message_retention_period    = local.queue_config.message_retention_period
+  message_retention_seconds   = local.queue_config.message_retention_seconds
   fifo_throughput_limit       = local.queue_config.fifo_throughput_limit
 
   # Redrive Policy - Link to DLQ
