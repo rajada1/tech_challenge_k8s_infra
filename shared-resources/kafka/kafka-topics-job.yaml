@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topics-init
+  namespace: kafka
+  labels:
+    app: kafka-init
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app: kafka-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-topics-creator
+          image: confluentinc/cp-kafka:7.5.0
+          command:
+            - bash
+            - -c
+            - |
+              echo "Waiting for Kafka to be ready..."
+              sleep 30
+
+              echo "Creating Kafka topics for Saga Pattern..."
+
+              # Main event topics
+              kafka-topics --create --if-not-exists \
+                --bootstrap-server kafka:9092 \
+                --partitions 6 \
+                --replication-factor 1 \
+                --config retention.ms=2592000000 \
+                --config segment.ms=604800000 \
+                --config compression.type=producer \
+                --topic os-events
+
+              kafka-topics --create --if-not-exists \
+                --bootstrap-server kafka:9092 \
+                --partitions 3 \
+                --replication-factor 1 \
+                --config retention.ms=2592000000 \
+                --config segment.ms=604800000 \
+                --config compression.type=producer \
+                --topic billing-events
+
+              kafka-topics --create --if-not-exists \
+                --bootstrap-server kafka:9092 \
+                --partitions 3 \
+                --replication-factor 1 \
+                --config retention.ms=2592000000 \
+                --config segment.ms=604800000 \
+                --config compression.type=producer \
+                --topic execution-events
+
+              # Dead Letter Topics
+              kafka-topics --create --if-not-exists \
+                --bootstrap-server kafka:9092 \
+                --partitions 3 \
+                --replication-factor 1 \
+                --config retention.ms=604800000 \
+                --topic dlt-os-events
+
+              kafka-topics --create --if-not-exists \
+                --bootstrap-server kafka:9092 \
+                --partitions 3 \
+                --replication-factor 1 \
+                --config retention.ms=604800000 \
+                --topic dlt-billing-events
+
+              kafka-topics --create --if-not-exists \
+                --bootstrap-server kafka:9092 \
+                --partitions 3 \
+                --replication-factor 1 \
+                --config retention.ms=604800000 \
+                --topic dlt-execution-events
+
+              echo "Topics created successfully!"
+              echo "Listing all topics:"
+              kafka-topics --list --bootstrap-server kafka:9092
+
+              echo "Topic details:"
+              kafka-topics --describe --bootstrap-server kafka:9092 --topic os-events
+              kafka-topics --describe --bootstrap-server kafka:9092 --topic billing-events
+              kafka-topics --describe --bootstrap-server kafka:9092 --topic execution-events

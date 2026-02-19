@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: maintenance-service
+  labels:
+    name: maintenance-service
+    app: oficina

@@ -1,7 +1,9 @@
 resource "kubernetes_config_map" "oficina_config" {
+  count = var.use_minikube ? 0 : 1
+
   metadata {
     name      = "oficina-config"
-    namespace = kubernetes_namespace.oficina.metadata[0].name
+    namespace = kubernetes_namespace.oficina[0].metadata[0].name
   }
 
   data = {

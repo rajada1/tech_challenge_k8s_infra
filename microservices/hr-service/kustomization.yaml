@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: hr-service
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - ingress.yaml
+
+commonLabels:
+  app: hr-service
+  app.kubernetes.io/name: hr-service
+  app.kubernetes.io/component: backend
+  app.kubernetes.io/part-of: oficina-system
+
+namespace: hr-service

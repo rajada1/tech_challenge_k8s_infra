@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: os-service
+  namespace: os-service
+  labels:
+    app: os-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: os-service
+  template:
+    metadata:
+      labels:
+        app: os-service
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: os-service-sa
+      containers:
+        - name: os-service
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/os-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+              name: http
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: AWS_REGION
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: LOG_LEVEL
+            - name: DB_HOST
+              value: "os-service-rds.xxxxxx.us-east-1.rds.amazonaws.com"
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: DB_NAME
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: os-service-secret
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: os-service-secret
+                  key: DB_PASSWORD
+            # Kafka Configuration (Event-Driven Architecture)
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka.svc.cluster.local:9092"
+            - name: KAFKA_CONSUMER_GROUP
+              value: "os-service-group"
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: os-service-secret
+                  key: NEW_RELIC_LICENSE_KEY
+            - name: NEW_RELIC_APP_NAME
+              value: "os-service"
+            - name: NEW_RELIC_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: ENVIRONMENT
+                  optional: true
+            - name: JAVA_OPTS
+              value: "-Xms512m -Xmx1024m -XX:+UseG1GC"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      serviceAccountName: os-service-sa
+      restartPolicy: Always
