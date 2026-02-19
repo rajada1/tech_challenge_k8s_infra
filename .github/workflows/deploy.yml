@@ -76,18 +76,24 @@ jobs:
           echo "CloudWatch Log Groups cleanup completed"
 
       - name: Remove Kubernetes resources from state (minikube mode)
-        # When use_minikube=true the Kubernetes provider has no valid host.
-        # Remove any k8s/helm resources still in state so plan/apply never try
-        # to refresh or destroy them via the provider (they vanish with the cluster).
-        # Using a shell if-check instead of GHA 'if:' to reliably read the env var.
+        # When use_minikube=true the k8s/helm provider has no valid host.
+        # Dynamically find and remove ALL kubernetes_* and helm_release resources
+        # from state so plan/apply never call the k8s API for them.
+        # They are destroyed automatically when EKS is deleted.
         run: |
           if [ "${TF_VAR_use_minikube}" = "true" ]; then
-            echo "Minikube mode — removing Kubernetes/Helm resources from state..."
-            terraform state rm -lock=false 'kubernetes_namespace.oficina[0]'       || echo "INFO: kubernetes_namespace.oficina[0] not in state"
-            terraform state rm -lock=false 'helm_release.newrelic_bundle[0]'       || echo "INFO: helm_release.newrelic_bundle[0] not in state"
-            terraform state rm -lock=false 'kubernetes_secret.newrelic_license[0]' || echo "INFO: kubernetes_secret.newrelic_license[0] not in state"
-            terraform state rm -lock=false 'kubernetes_config_map.oficina_config[0]' || echo "INFO: kubernetes_config_map.oficina_config[0] not in state"
-            echo "Done removing Kubernetes/Helm resources from state"
+            echo "Minikube mode — scanning state for Kubernetes/Helm resources..."
+            K8S_RESOURCES=$(terraform state list 2>/dev/null | grep -E '^(kubernetes_|helm_release\.)' || true)
+            if [ -n "$K8S_RESOURCES" ]; then
+              echo "Found k8s/helm resources in state:"
+              echo "$K8S_RESOURCES"
+              echo "$K8S_RESOURCES" | while IFS= read -r addr; do
+                echo "  Removing: $addr"
+                terraform state rm -lock=false "$addr" && echo "  Removed: $addr" || echo "  WARNING: could not remove $addr"
+              done
+            else
+              echo "No Kubernetes/Helm resources found in state — nothing to remove"
+            fi
           else
             echo "EKS mode — skipping Kubernetes state cleanup"
           fi
@@ -98,15 +104,7 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: |
-          # In minikube mode, skip provider refresh so Terraform never calls the
-          # Kubernetes API for resources that were already removed from state above.
-          # -refresh=false is safe here: k8s resources are gone with the EKS cluster.
-          if [ "${TF_VAR_use_minikube}" = "true" ]; then
-            terraform plan -no-color -refresh=false -out=tfplan
-          else
-            terraform plan -no-color -out=tfplan
-          fi
+        run: terraform plan -no-color -out=tfplan
 
       - name: Terraform Apply
         # Apply runs for both modes:
