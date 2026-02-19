@@ -25,7 +25,7 @@ variable "desired_capacity" {
 variable "use_minikube" {
   description = "If true, provision a single EC2 instance for Docker/Minikube instead of EKS"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "minikube_instance_type" {
