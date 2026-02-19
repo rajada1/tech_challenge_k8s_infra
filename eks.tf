@@ -9,14 +9,12 @@ module "eks" {
 
   cluster_endpoint_public_access = true
 
-  # Map specific IAM users to Kubernetes RBAC groups (adds entries to aws-auth)
-  map_users = [
-    {
-      userarn  = "arn:aws:iam::124731138716:user/cli-eldutra"
-      username = "cli-eldutra"
-      groups   = ["system:masters"]
-    }
-  ]
+  # NOTE: user mapping removed here because the module version in use
+  # does not accept `map_users` as an argument. To grant admin access to
+  # an IAM user, either: (a) patch the aws-auth ConfigMap manually, or
+  # (b) use the module's supported inputs (map_roles/map_accounts) or a
+  # newer module version. See README or ask if you want me to prepare a
+  # PR that applies an aws-auth patch for testing.
 
   vpc_id                   = module.vpc.vpc_id
   subnet_ids               = module.vpc.private_subnets
