@@ -23,6 +23,8 @@ provider "helm" {
 
 # 1. Create the Namespace for the Application and Monitoring tools
 resource "kubernetes_namespace" "oficina" {
+  count = var.use_minikube ? 0 : 1
+
   metadata {
     name = "oficina-${var.environment}"
     labels = {
@@ -34,8 +36,9 @@ resource "kubernetes_namespace" "oficina" {
 
 # 2. Deploy New Relic Bundle (Infrastructure Monitoring, Logging, etc.)
 resource "helm_release" "newrelic_bundle" {
+  count      = var.use_minikube ? 0 : 1
   name       = "newrelic-bundle"
-  namespace  = kubernetes_namespace.oficina.metadata[0].name
+  namespace  = kubernetes_namespace.oficina[0].metadata[0].name
   repository = "https://helm-charts.newrelic.com"
   chart      = "nri-bundle"
   version    = "5.0.0" # Clean version pinning
@@ -84,9 +87,11 @@ resource "helm_release" "newrelic_bundle" {
 
 # 3. Create the Secret for the Application (APM)
 resource "kubernetes_secret" "newrelic_secret" {
+  count = var.use_minikube ? 0 : 1
+
   metadata {
     name      = "newrelic-secret"
-    namespace = kubernetes_namespace.oficina.metadata[0].name
+    namespace = kubernetes_namespace.oficina[0].metadata[0].name
   }
 
   data = {
@@ -98,9 +103,11 @@ resource "kubernetes_secret" "newrelic_secret" {
 
 # 4. Create the ConfigMap for the Application (APM)
 resource "kubernetes_config_map" "newrelic_config" {
+  count = var.use_minikube ? 0 : 1
+
   metadata {
     name      = "newrelic-config"
-    namespace = kubernetes_namespace.oficina.metadata[0].name
+    namespace = kubernetes_namespace.oficina[0].metadata[0].name
   }
 
   data = {
