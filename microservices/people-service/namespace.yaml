@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: people-service
-  labels:
-    name: people-service
-    app: oficina
