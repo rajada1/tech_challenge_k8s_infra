@@ -46,7 +46,7 @@ resource "aws_instance" "minikube" {
   ami                         = data.aws_ami.amazon_linux_2.id
   instance_type               = var.minikube_instance_type
   subnet_id                   = element(module.vpc.public_subnets, 0)
-  key_name                    = length(trim(var.minikube_key_name)) > 0 ? var.minikube_key_name : null
+  key_name                    = length(trimspace(var.minikube_key_name)) > 0 ? var.minikube_key_name : null
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.minikube_sg.id]
 

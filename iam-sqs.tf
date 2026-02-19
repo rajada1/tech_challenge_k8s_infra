@@ -21,13 +21,14 @@ resource "aws_iam_role" "eks_pod_role" {
       {
         Effect = "Allow"
         Principal = {
-          Federated = module.eks.oidc_provider_arn
+          Federated = try(module.eks[0].oidc_provider_arn, "")
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${module.eks.oidc_provider}:sub" = "system:serviceaccount:${each.key}:${each.key}-sa"
-            "${module.eks.oidc_provider}:aud" = "sts.amazonaws.com"
+            "${try(module.eks[0].oidc_provider, "")}:sub" = "system:serviceaccount:${each.key}:${each.key}-sa"
+            # note: using try() to avoid invalid attribute access when EKS module is not created
+            "${try(module.eks[0].oidc_provider, "")}:aud" = "sts.amazonaws.com"
           }
         }
       }
