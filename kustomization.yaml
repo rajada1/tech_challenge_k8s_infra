@@ -1,0 +1,61 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: oficina-microservices
+  annotations:
+    description: "Kustomization for Oficina Management System - All Microservices"
+
+# Resources from all microservices
+resources:
+  # Shared Resources - Kafka Infrastructure
+  - shared-resources/kafka/namespace.yaml
+  - shared-resources/kafka/zookeeper-service.yaml
+  - shared-resources/kafka/zookeeper-deployment.yaml
+  - shared-resources/kafka/kafka-service.yaml
+  - shared-resources/kafka/kafka-deployment.yaml
+  - shared-resources/kafka/kafka-topics-job.yaml
+
+  # OS Service
+  - microservices/os-service/namespace.yaml
+  - microservices/os-service/configmap.yaml
+  - microservices/os-service/secret.yaml
+  - microservices/os-service/deployment.yaml
+  - microservices/os-service/service.yaml
+  - microservices/os-service/hpa.yaml
+  - microservices/os-service/ingress.yaml
+
+  # Billing Service
+  - microservices/billing-service/namespace.yaml
+  - microservices/billing-service/configmap.yaml
+  - microservices/billing-service/secret.yaml
+  - microservices/billing-service/deployment.yaml
+  - microservices/billing-service/service.yaml
+  - microservices/billing-service/hpa.yaml
+  - microservices/billing-service/ingress.yaml
+
+  # Execution Service
+  - microservices/execution-service/namespace.yaml
+  - microservices/execution-service/configmap.yaml
+  - microservices/execution-service/secret.yaml
+  - microservices/execution-service/deployment.yaml
+  - microservices/execution-service/service.yaml
+  - microservices/execution-service/hpa.yaml
+  - microservices/execution-service/ingress.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: oficina-system
+
+# Namespace for all resources (optional, can be overridden per service)
+# namespace: oficina-system
+
+# Images (can be used to override image tags)
+images:
+  - name: os-service
+    newTag: latest
+  - name: billing-service
+    newTag: latest
+  - name: execution-service
+    newTag: latest

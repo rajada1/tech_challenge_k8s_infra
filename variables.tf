@@ -22,6 +22,24 @@ variable "desired_capacity" {
   default     = 2
 }
 
+variable "use_minikube" {
+  description = "If true, provision a single EC2 instance for Docker/Minikube instead of EKS"
+  type        = bool
+  default     = false
+}
+
+variable "minikube_instance_type" {
+  description = "EC2 instance type for Minikube"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "minikube_key_name" {
+  description = "Optional EC2 KeyPair name to allow SSH into the Minikube instance"
+  type        = string
+  default     = ""
+}
+
 variable "newrelic_license_key" {
   description = "New Relic License Key (Ingest)"
   type        = string

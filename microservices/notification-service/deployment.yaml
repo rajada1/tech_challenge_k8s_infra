@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service-deployment
+  namespace: notification-service
+  labels:
+    app: notification-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: notification-service-sa
+      containers:
+        - name: notification-service
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/notification-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+              name: http
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-service-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-service-config
+                  key: AWS_REGION
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-service-config
+                  key: LOG_LEVEL
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secrets
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-service-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-service-config
+                  key: DB_NAME
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secrets
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secrets
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secrets
+                  key: JWT_SECRET
+            - name: NEW_RELIC_APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-service-config
+                  key: NEW_RELIC_APP_NAME
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secrets
+                  key: NEW_RELIC_LICENSE_KEY
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]

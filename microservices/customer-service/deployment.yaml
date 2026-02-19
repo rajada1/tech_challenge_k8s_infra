@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service-deployment
+  namespace: customer-service
+  labels:
+    app: customer-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: customer-service
+  template:
+    metadata:
+      labels:
+        app: customer-service
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: customer-service-sa
+      containers:
+        - name: customer-service
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/customer-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+              name: http
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: AWS_REGION
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: LOG_LEVEL
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secrets
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: DB_NAME
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secrets
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secrets
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secrets
+                  key: JWT_SECRET
+            - name: NEW_RELIC_APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: NEW_RELIC_APP_NAME
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secrets
+                  key: NEW_RELIC_LICENSE_KEY
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: SQS_QUEUE_URL
+            - name: SQS_CUSTOMER_EVENTS_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: SQS_CUSTOMER_EVENTS_QUEUE
+            - name: SQS_CONSUMER_WAIT_TIME_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: SQS_CONSUMER_WAIT_TIME_SECONDS
+            - name: SQS_MAX_NUMBER_OF_MESSAGES
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: SQS_MAX_NUMBER_OF_MESSAGES
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]

@@ -1,0 +1,20 @@
+# Exemplo de arquivo terraform.tfvars para tech_challenge_k8s_infra
+# Copie este arquivo para terraform.tfvars e ajuste os valores
+
+# ===================================
+# Configurações AWS
+# ===================================
+aws_region = "us-east-1"
+
+# ===================================
+# Configurações do EKS
+# ===================================
+cluster_name       = "oficina-eks-cluster"
+node_instance_type = "t3.medium"  # t3.large recomendado para produção
+desired_capacity   = 2             # Número de nodes desejado
+
+# ===================================
+# New Relic
+# ===================================
+newrelic_account_id = "YOUR_NEWRELIC_ACCOUNT_ID"  # Obtenha em https://one.newrelic.com
+newrelic_api_key    = "YOUR_NEWRELIC_API_KEY"     # User API Key

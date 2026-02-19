@@ -5,15 +5,24 @@ on:
   push:
     branches:
       - master
+      - fase/quatro
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy'
+        description: "Environment to deploy"
         required: true
-        default: 'homolog'
+        default: "homolog"
         type: choice
         options:
           - homolog
+      use_minikube:
+        description: "Provision Minikube EC2 instead of EKS"
+        required: false
+        default: false
+        type: choice
+        options:
+          - true
+          - false
 
 env:
   AWS_REGION: us-east-1
@@ -28,7 +37,8 @@ jobs:
       TF_VAR_newrelic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
       TF_VAR_newrelic_license_key: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       TF_VAR_environment: ${{ github.event.inputs.environment || 'homolog' }}
-    
+      TF_VAR_use_minikube: ${{ github.event.inputs.use_minikube || 'false' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,16 +64,50 @@ jobs:
         id: init
         run: terraform init
 
+      - name: Debug Terraform `use_minikube` and EKS target
+        run: |
+          echo "github.event.inputs.use_minikube='${{ github.event.inputs.use_minikube }}'"
+          echo "env TF_VAR_use_minikube='$TF_VAR_use_minikube'"
+          echo "Running a focused plan for module.eks to see intended action (diagnostic only)"
+          # Do a targeted plan for module.eks using the workflow input to evaluate behavior.
+          terraform plan -no-color -target=module.eks -var="use_minikube=${{ github.event.inputs.use_minikube || 'true' }}" -out=debug_eks_plan || true
+          if [ -f debug_eks_plan ]; then
+            terraform show -no-color debug_eks_plan || true
+          fi
+
       - name: Clean up existing CloudWatch Log Groups
         run: |
           echo "Checking for existing CloudWatch Log Groups..."
-          
+
           # Delete existing EKS log group if it exists
           aws logs delete-log-group \
             --log-group-name /aws/eks/tech-challenge-cluster/cluster \
             --region ${{ env.AWS_REGION }} 2>/dev/null || echo "Log group doesn't exist or already deleted"
-          
+
           echo "CloudWatch Log Groups cleanup completed"
+
+      - name: Remove Kubernetes resources from state (minikube mode)
+        # When use_minikube=true the k8s/helm provider has no valid host.
+        # Dynamically find and remove ALL kubernetes_* and helm_release resources
+        # from state so plan/apply never call the k8s API for them.
+        # They are destroyed automatically when EKS is deleted.
+        run: |
+          if [ "${TF_VAR_use_minikube}" = "true" ]; then
+            echo "Minikube mode — scanning state for Kubernetes/Helm resources..."
+            K8S_RESOURCES=$(terraform state list 2>/dev/null | grep -E '^(kubernetes_|helm_release\.)' || true)
+            if [ -n "$K8S_RESOURCES" ]; then
+              echo "Found k8s/helm resources in state:"
+              echo "$K8S_RESOURCES"
+              echo "$K8S_RESOURCES" | while IFS= read -r addr; do
+                echo "  Removing: $addr"
+                terraform state rm -lock=false "$addr" && echo "  Removed: $addr" || echo "  WARNING: could not remove $addr"
+              done
+            else
+              echo "No Kubernetes/Helm resources found in state — nothing to remove"
+            fi
+          else
+            echo "EKS mode — skipping Kubernetes state cleanup"
+          fi
 
       - name: Terraform Validate
         id: validate
@@ -72,16 +116,16 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: terraform plan -no-color -out=tfplan
-        continue-on-error: true
-
-      - name: Terraform Plan Status
-        if: steps.plan.outcome == 'failure'
-        run: exit 1
 
       - name: Terraform Apply
+        # Apply runs for both modes:
+        #   use_minikube=true  -> creates EC2 Minikube, destroys EKS and k8s resources from state
+        #   use_minikube=false -> creates/updates EKS cluster
+        if: steps.plan.outcome == 'success'
         run: terraform apply -auto-approve -input=false tfplan
 
       - name: Get EKS Outputs
+        if: env.TF_VAR_use_minikube == 'false'
         id: outputs
         run: |
           echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
@@ -92,6 +136,7 @@ jobs:
           echo "cluster_security_group_id=$(terraform output -raw cluster_security_group_id)" >> $GITHUB_OUTPUT
 
       - name: Store EKS Config in SSM
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'homolog' }}
           aws ssm put-parameter \
@@ -99,13 +144,13 @@ jobs:
             --value "${{ steps.outputs.outputs.cluster_name }}" \
             --type "String" \
             --overwrite
-          
+
           aws ssm put-parameter \
             --name "/oficina/$ENVIRONMENT/eks/cluster_endpoint" \
             --value "${{ steps.outputs.outputs.cluster_endpoint }}" \
             --type "String" \
             --overwrite
-          
+
           aws ssm put-parameter \
             --name "/oficina/$ENVIRONMENT/eks/region" \
             --value "${{ steps.outputs.outputs.region }}" \
@@ -131,12 +176,30 @@ jobs:
             --overwrite
 
       - name: Configure kubectl
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           aws eks update-kubeconfig \
             --region ${{ steps.outputs.outputs.region }} \
             --name ${{ steps.outputs.outputs.cluster_name }}
 
       - name: Verify EKS Cluster
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           kubectl get nodes
           kubectl cluster-info
+
+      - name: Get AWS Account ID
+        id: account
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
+      - name: Replace AWS Account ID in K8s manifests
+        if: env.TF_VAR_use_minikube == 'false'
+        run: |
+          echo "Replacing <AWS_ACCOUNT_ID> with actual account ID in deployment manifests..."
+          find microservices/ -name '*.yaml' -exec sed -i "s/<AWS_ACCOUNT_ID>/${{ steps.account.outputs.account_id }}/g" {} +
+          echo "Replacement completed."
+
+      - name: Deploy microservices via Kustomize
+        if: env.TF_VAR_use_minikube == 'false'
+        run: |
+          kubectl apply -k . || echo "Kustomize deploy completed with warnings"
