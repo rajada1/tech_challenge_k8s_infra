@@ -84,7 +84,19 @@ resource "aws_iam_role_policy" "github_actions_deployer_policy" {
         Action = [
           "eks:DescribeCluster",
           "eks:ListClusters",
-          "sts:GetCallerIdentity"
+          "sts:GetCallerIdentity",
+          # ECR permissions for pushing images from GitHub Actions
+          "ecr:GetAuthorizationToken",
+          "ecr:DescribeRepositories",
+          "ecr:CreateRepository",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:ListImages",
+          "ecr:DescribeImages"
         ]
         Resource = "*"
       }
