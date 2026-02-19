@@ -56,8 +56,9 @@ locals {
     visibility_timeout_seconds  = 60     # 60 seconds for processing
     message_retention_seconds   = 345600 # 4 days in seconds
     content_based_deduplication = false  # Use messageDeduplicationId
-    fifo_throughput_limit       = "perMessageGroupId"
-    kms_master_key_id           = null # Use default AWS managed key
+    # Use perQueue to avoid DeduplicationScope API constraint in some accounts/regions
+    fifo_throughput_limit = "perQueue"
+    kms_master_key_id     = null # Use default AWS managed key
   }
 
   dlq_config = {

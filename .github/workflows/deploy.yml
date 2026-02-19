@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - master
-
+      - fase/quatro
   workflow_dispatch:
     inputs:
       environment:
