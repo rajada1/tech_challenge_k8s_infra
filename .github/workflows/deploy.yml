@@ -64,6 +64,17 @@ jobs:
         id: init
         run: terraform init
 
+      - name: Debug Terraform `use_minikube` and EKS target
+        run: |
+          echo "github.event.inputs.use_minikube='${{ github.event.inputs.use_minikube }}'"
+          echo "env TF_VAR_use_minikube='$TF_VAR_use_minikube'"
+          echo "Running a focused plan for module.eks to see intended action (diagnostic only)"
+          # Do a targeted plan for module.eks using the workflow input to evaluate behavior.
+          terraform plan -no-color -target=module.eks -var="use_minikube=${{ github.event.inputs.use_minikube || 'true' }}" -out=debug_eks_plan || true
+          if [ -f debug_eks_plan ]; then
+            terraform show -no-color debug_eks_plan || true
+          fi
+
       - name: Clean up existing CloudWatch Log Groups
         run: |
           echo "Checking for existing CloudWatch Log Groups..."
