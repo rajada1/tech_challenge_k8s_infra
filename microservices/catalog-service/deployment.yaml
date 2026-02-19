@@ -18,7 +18,7 @@ spec:
         version: v1
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8081"
+        prometheus.io/port: "8087"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       serviceAccountName: catalog-service-sa
@@ -27,7 +27,7 @@ spec:
           image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/catalog-service:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8081
+            - containerPort: 8087
               name: http
               protocol: TCP
           env:
@@ -46,31 +46,8 @@ spec:
                 configMapKeyRef:
                   name: catalog-service-config
                   key: LOG_LEVEL
-            - name: DB_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: catalog-service-secrets
-                  key: DB_HOST
-            - name: DB_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: catalog-service-config
-                  key: DB_PORT
-            - name: DB_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: catalog-service-config
-                  key: DB_NAME
-            - name: DB_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: catalog-service-secrets
-                  key: DB_USERNAME
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: catalog-service-secrets
-                  key: DB_PASSWORD
+            - name: SERVER_PORT
+              value: "8087"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -96,14 +73,14 @@ spec:
           livenessProbe:
             httpGet:
               path: /actuator/health
-              port: 8081
+              port: 8087
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 8081
-            initialDelaySeconds: 5
+              port: 8087
+            initialDelaySeconds: 30
             periodSeconds: 5
           lifecycle:
             preStop:
