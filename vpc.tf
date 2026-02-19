@@ -10,7 +10,9 @@ module "vpc" {
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
 
   # Disable NAT Gateway in minimal/dev mode to avoid additional hourly charges
-  enable_nat_gateway = false
+  # Enable NAT Gateway so EKS worker nodes in private subnets can access the internet
+  # (required to pull container images during node bootstrap)
+  enable_nat_gateway = true
   single_nat_gateway = true
 
   tags = {
