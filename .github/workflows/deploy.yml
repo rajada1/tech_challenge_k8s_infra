@@ -75,6 +75,21 @@ jobs:
 
           echo "CloudWatch Log Groups cleanup completed"
 
+      - name: Configure kubectl from existing state
+        # When switching from EKS to Minikube (use_minikube=true), Terraform still needs
+        # to destroy existing Kubernetes resources from state. This step pre-configures
+        # kubectl so the kubernetes/helm providers can authenticate during plan/apply.
+        run: |
+          EXISTING_CLUSTER=$(terraform output -raw cluster_name 2>/dev/null || echo "")
+          if [ -n "$EXISTING_CLUSTER" ]; then
+            echo "Found existing EKS cluster in state: $EXISTING_CLUSTER — configuring kubectl..."
+            aws eks update-kubeconfig \
+              --region ${{ env.AWS_REGION }} \
+              --name "$EXISTING_CLUSTER" || echo "WARNING: could not configure kubectl; continuing anyway"
+          else
+            echo "No existing EKS cluster in state — skipping kubectl pre-config"
+          fi
+
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color
@@ -84,7 +99,10 @@ jobs:
         run: terraform plan -no-color -out=tfplan
 
       - name: Terraform Apply
-        if: env.TF_VAR_use_minikube == 'false' && steps.plan.outcome == 'success'
+        # Apply runs for both modes:
+        #   use_minikube=true  -> creates EC2 Minikube, destroys EKS and k8s resources from state
+        #   use_minikube=false -> creates/updates EKS cluster
+        if: steps.plan.outcome == 'success'
         run: terraform apply -auto-approve -input=false tfplan
 
       - name: Get EKS Outputs
