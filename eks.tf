@@ -9,6 +9,15 @@ module "eks" {
 
   cluster_endpoint_public_access = true
 
+  # Map specific IAM users to Kubernetes RBAC groups (adds entries to aws-auth)
+  map_users = [
+    {
+      userarn  = "arn:aws:iam::124731138716:user/cli-eldutra"
+      username = "cli-eldutra"
+      groups   = ["system:masters"]
+    }
+  ]
+
   vpc_id                   = module.vpc.vpc_id
   subnet_ids               = module.vpc.private_subnets
   control_plane_subnet_ids = module.vpc.private_subnets
