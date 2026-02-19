@@ -35,7 +35,7 @@ module "eks" {
   }
 }
 
-data "aws_caller_identity" "current" {}
+
 
 # OIDC provider for GitHub Actions
 resource "aws_iam_openid_connect_provider" "github" {
