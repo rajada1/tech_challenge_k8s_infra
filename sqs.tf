@@ -127,7 +127,8 @@ resource "aws_sqs_queue" "service_events_fifo" {
 # ==========================================
 
 resource "aws_sqs_queue_policy" "service_events_policy" {
-  for_each = local.services
+  # Only create queue policies when EKS/IRSA is enabled. Skip for Minikube local path.
+  for_each = var.use_minikube ? {} : local.services
 
   queue_url = aws_sqs_queue.service_events_fifo[each.key].id
 
