@@ -15,6 +15,14 @@ on:
         type: choice
         options:
           - homolog
+      use_minikube:
+        description: "Provision Minikube EC2 instead of EKS"
+        required: false
+        default: true
+        type: choice
+        options:
+          - true
+          - false
 
 env:
   AWS_REGION: us-east-1
@@ -29,6 +37,7 @@ jobs:
       TF_VAR_newrelic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
       TF_VAR_newrelic_license_key: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       TF_VAR_environment: ${{ github.event.inputs.environment || 'homolog' }}
+      TF_VAR_use_minikube: ${{ github.event.inputs.use_minikube || 'true' }}
 
     steps:
       - name: Checkout code
@@ -80,9 +89,11 @@ jobs:
         run: exit 1
 
       - name: Terraform Apply
+        if: env.TF_VAR_use_minikube == 'false'
         run: terraform apply -auto-approve -input=false tfplan
 
       - name: Get EKS Outputs
+        if: env.TF_VAR_use_minikube == 'false'
         id: outputs
         run: |
           echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
@@ -93,6 +104,7 @@ jobs:
           echo "cluster_security_group_id=$(terraform output -raw cluster_security_group_id)" >> $GITHUB_OUTPUT
 
       - name: Store EKS Config in SSM
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'homolog' }}
           aws ssm put-parameter \
@@ -132,12 +144,14 @@ jobs:
             --overwrite
 
       - name: Configure kubectl
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           aws eks update-kubeconfig \
             --region ${{ steps.outputs.outputs.region }} \
             --name ${{ steps.outputs.outputs.cluster_name }}
 
       - name: Verify EKS Cluster
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           kubectl get nodes
           kubectl cluster-info
@@ -147,11 +161,13 @@ jobs:
         run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
 
       - name: Replace AWS Account ID in K8s manifests
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           echo "Replacing <AWS_ACCOUNT_ID> with actual account ID in deployment manifests..."
           find microservices/ -name '*.yaml' -exec sed -i "s/<AWS_ACCOUNT_ID>/${{ steps.account.outputs.account_id }}/g" {} +
           echo "Replacement completed."
 
       - name: Deploy microservices via Kustomize
+        if: env.TF_VAR_use_minikube == 'false'
         run: |
           kubectl apply -k . || echo "Kustomize deploy completed with warnings"

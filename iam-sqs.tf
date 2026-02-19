@@ -9,9 +9,11 @@
 # ==========================================
 
 resource "aws_iam_role" "eks_pod_role" {
-  for_each = local.services
+  # only create IRSA roles when EKS is enabled (not using Minikube)
+  for_each = var.use_minikube ? {} : local.services
 
-  name = "${each.key}-service-sqs-role"
+  # use name_prefix to avoid conflicts with existing roles in the account
+  name_prefix = "${each.key}-service-sqs-role-"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -46,7 +48,7 @@ resource "aws_iam_role" "eks_pod_role" {
 # ==========================================
 
 resource "aws_iam_role_policy" "eks_sqs_policy" {
-  for_each = local.services
+  for_each = var.use_minikube ? {} : local.services
 
   name = "${each.key}-sqs-policy"
   role = aws_iam_role.eks_pod_role[each.key].id

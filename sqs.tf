@@ -116,7 +116,8 @@ resource "aws_sqs_queue" "service_events_fifo" {
     Service     = each.key
     Environment = var.environment
     Pattern     = "Saga Event-Driven"
-    Description = each.value.description
+    # sanitize description to remove characters not allowed in SQS tag values (e.g. parentheses)
+    Description = replace(replace(each.value.description, "(", ""), ")", "")
     ManagedBy   = "Terraform"
   }
 }
